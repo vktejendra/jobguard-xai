@@ -1,0 +1,55 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 1122 >>
+stream
+BT /F1 11 Tf 40 750 Td 14 TL
+(DR. ELENA ROSTOVA) ' 
+(San Francisco, CA | elena.rostova@example.com | \(555\) 382-9012) ' 
+() ' 
+(PROFESSIONAL SUMMARY) ' 
+(Senior Data Scientist with 6+ years of machine learning, deep learning,) ' 
+(statistical modeling, and large-scale data pipelines. Built production recommendation) ' 
+(engines and predictive NLP classifiers on AWS and BigQuery.) ' 
+() ' 
+(CORE TECHNICAL SKILLS) ' 
+(Python, SQL, PyTorch, TensorFlow, Scikit-Learn, Pandas, NumPy, NLP,) ' 
+(Computer Vision, Machine Learning, Deep Learning, Statistics, Big Data, Spark, AWS, Docker, Git) ' 
+() ' 
+(PROFESSIONAL EXPERIENCE) ' 
+(Senior Data Scientist - NeuralMetrics AI Labs \(2022 - Present\)) ' 
+(- Designed and deployed PyTorch recommendation engine increasing engagement by 28%.) ' 
+(- Engineered fraud detection pipeline scanning 2.5M daily transactions in SQL and Python.) ' 
+() ' 
+(Data Scientist - Apex Analytics \(2019 - 2022\)) ' 
+(- Built customer predictive churn algorithms using Scikit-Learn and XGBoost.) ' 
+() ' 
+(EDUCATION) ' 
+(Ph.D. in Computer Science \(Machine Learning\) - UC Berkeley \(2019\)) ' 
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000001415 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1485
+%%EOF

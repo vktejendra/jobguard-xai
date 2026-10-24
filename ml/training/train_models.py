@@ -16,8 +16,15 @@ Saves the best model, feature pipeline, confusion matrices, ROC curves, PR curve
 import json
 import logging
 import os
+import sys
 import time
 from typing import Any, Dict, List, Optional, Tuple
+
+# ── Ensure project root is on sys.path so `ml.*` imports resolve correctly ──
+# This is needed when running: py ml/training/train_models.py from the project root
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 import joblib
 import matplotlib

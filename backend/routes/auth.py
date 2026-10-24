@@ -101,8 +101,11 @@ def login():
     )
     user = cursor.fetchone()
 
-    if not user or not bcrypt.check_password_hash(user["password_hash"], password):
-        return jsonify({"error": "Invalid email or password"}), 401
+    if not user:
+        return jsonify({"error": "No account found with this email. Please register first."}), 404
+
+    if not bcrypt.check_password_hash(user["password_hash"], password):
+        return jsonify({"error": "Invalid password. Please check your credentials."}), 401
 
     token = encode_jwt(user_id=user["id"], email=user["email"])
 

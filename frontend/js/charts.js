@@ -61,6 +61,7 @@ const ChartEngine = (function () {
   }
 
   function getCanvas(canvasId) {
+    if (typeof Chart === 'undefined') return null;
     const el = document.getElementById(canvasId);
     if (!el) return null;
     return el.getContext('2d');
@@ -878,7 +879,120 @@ const ChartEngine = (function () {
     return chartInstances[canvasId];
   }
 
-  // ─── 15. Export Chart Canvas as PNG ─────────────────────────────────────────
+  // ─── 15. SOC Incident Volume Trend Area Chart ──────────────────────────────
+  function drawIncidentVolumeArea(canvasId) {
+    const ctx = getCanvas(canvasId);
+    if (!ctx) return;
+    destroyChart(canvasId);
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, 180);
+    gradient.addColorStop(0, 'rgba(0, 242, 254, 0.38)');
+    gradient.addColorStop(0.5, 'rgba(13, 242, 201, 0.12)');
+    gradient.addColorStop(1, 'rgba(6, 12, 20, 0.0)');
+
+    const secondaryGrad = ctx.createLinearGradient(0, 0, 0, 180);
+    secondaryGrad.addColorStop(0, 'rgba(255, 59, 92, 0.22)');
+    secondaryGrad.addColorStop(1, 'rgba(6, 12, 20, 0.0)');
+
+    chartInstances[canvasId] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+        datasets: [
+          {
+            label: 'Received',
+            data: [42, 48, 54, 57, 61, 47],
+            borderColor: '#00f2fe',
+            borderWidth: 2.2,
+            backgroundColor: gradient,
+            fill: true,
+            tension: 0.42,
+            pointBackgroundColor: '#00f2fe',
+            pointBorderColor: '#070d15',
+            pointBorderWidth: 2,
+            pointRadius: (ctx) => (ctx.dataIndex === 4 ? 6 : 3),
+            pointHoverRadius: 7
+          },
+          {
+            label: 'Escalated',
+            data: [26, 31, 33, 37, 40, 30],
+            borderColor: 'rgba(13, 242, 201, 0.85)',
+            borderWidth: 1.6,
+            borderDash: [4, 4],
+            backgroundColor: 'transparent',
+            fill: false,
+            tension: 0.42,
+            pointRadius: 0
+          },
+          {
+            label: 'New',
+            data: [16, 20, 24, 23, 28, 19],
+            borderColor: 'rgba(255, 59, 92, 0.7)',
+            borderWidth: 1.5,
+            backgroundColor: secondaryGrad,
+            fill: true,
+            tension: 0.42,
+            pointRadius: 0
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(10, 17, 26, 0.95)',
+            titleColor: '#f0f6fc',
+            titleFont: { family: "'Sora', sans-serif", weight: 'bold', size: 12 },
+            bodyColor: '#00f2fe',
+            bodyFont: { family: "'IBM Plex Mono', monospace", size: 11 },
+            borderColor: 'rgba(0, 242, 254, 0.35)',
+            borderWidth: 1,
+            padding: 10,
+            cornerRadius: 8,
+            callbacks: {
+              label: function(ctx) {
+                return ` ${ctx.dataset.label}: ${ctx.parsed.y} incidents`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: {
+              color: 'rgba(255, 255, 255, 0.04)',
+              drawBorder: false
+            },
+            ticks: {
+              color: '#6e828a',
+              font: { family: "'IBM Plex Mono', monospace", size: 10 }
+            }
+          },
+          y: {
+            min: 0,
+            max: 80,
+            ticks: {
+              stepSize: 20,
+              color: '#6e828a',
+              font: { family: "'IBM Plex Mono', monospace", size: 10 }
+            },
+            grid: {
+              color: 'rgba(255, 255, 255, 0.04)',
+              drawBorder: false
+            }
+          }
+        }
+      }
+    });
+    return chartInstances[canvasId];
+  }
+
+  // ─── 16. Export Chart Canvas as PNG ─────────────────────────────────────────
   function exportChartToPng(canvasId, filename) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
@@ -908,6 +1022,7 @@ const ChartEngine = (function () {
     drawConfusionMatrix,
     drawSkillsBar,
     drawRadarChart,
+    drawIncidentVolumeArea,
     exportChartToPng
   };
 })();

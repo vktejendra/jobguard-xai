@@ -1,0 +1,54 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 1003 >>
+stream
+BT /F1 11 Tf 40 750 Td 14 TL
+(SARAH JENKINS) ' 
+(Seattle, WA | sarah.jenkins@example.com | \(555\) 891-2300) ' 
+() ' 
+(PROFESSIONAL SUMMARY) ' 
+(DevOps and Cloud Engineer with 7+ years architecting automated CI/CD pipelines,) ' 
+(Kubernetes container orchestration, and Infrastructure as Code across AWS and GCP.) ' 
+() ' 
+(CORE TECHNICAL SKILLS) ' 
+(AWS, Kubernetes, Docker, Terraform, Ansible, Linux, CI/CD, Jenkins, GitHub Actions,) ' 
+(Python, Bash, Prometheus, Grafana, Git, Nginx, Microservices) ' 
+() ' 
+(PROFESSIONAL EXPERIENCE) ' 
+(Lead DevOps Engineer - CloudHorizon Tech \(2021 - Present\)) ' 
+(- Managed multi-region AWS EKS Kubernetes clusters hosting 80+ microservices.) ' 
+(- Provisioned multi-environment infrastructure with modular Terraform.) ' 
+() ' 
+(DevOps Engineer - BlueStream Digital \(2018 - 2021\)) ' 
+(- Automated server patching and containerized Java apps with Docker.) ' 
+() ' 
+(EDUCATION) ' 
+(B.S. in Computer Information Systems - University of Washington \(2018\)) ' 
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000001296 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1366
+%%EOF

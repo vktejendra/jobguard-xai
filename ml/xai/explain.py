@@ -7,7 +7,14 @@ plain language summaries) and global feature importances for model transparency.
 import logging
 import os
 import re
+import sys
 from typing import Any, Dict, List, Optional, Tuple, Union
+
+# ── Ensure project root is on sys.path ──
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
 
 import joblib
 import numpy as np

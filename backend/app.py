@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 # Ensure project root is in sys.path
@@ -66,7 +66,12 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     cors_origin_env = os.getenv("CORS_ORIGIN", "http://127.0.0.1:5500")
     allowed_origins = [o.strip() for o in cors_origin_env.split(",") if o.strip()]
     # Ensure standard local test origins are included if not present
-    for default_origin in ("http://127.0.0.1:5500", "http://localhost:5500"):
+    for default_origin in (
+        "http://127.0.0.1:5500", "http://localhost:5500",
+        "http://127.0.0.1:3000", "http://localhost:3000",
+        "http://127.0.0.1:5000", "http://localhost:5000",
+        "http://127.0.0.1:8080", "http://localhost:8080"
+    ):
         if default_origin not in allowed_origins:
             allowed_origins.append(default_origin)
 
@@ -144,6 +149,19 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             },
             "timestamp": datetime.now(timezone.utc).isoformat()
         }), 200
+
+    # ─── Frontend Static SPA & Asset Serving (For Render / Production) ──────────
+    FRONTEND_DIR = os.path.join(PROJECT_ROOT, "frontend")
+
+    @app.route("/", defaults={"path": "index.html"})
+    @app.route("/<path:path>")
+    def serve_frontend(path):
+        if path.startswith("api/"):
+            return jsonify({"error": "Requested API endpoint not found"}), 404
+        target_path = os.path.join(FRONTEND_DIR, path)
+        if os.path.isfile(target_path):
+            return send_from_directory(FRONTEND_DIR, path)
+        return send_from_directory(FRONTEND_DIR, "index.html")
 
     # Global Error Handlers (Consistent JSON error responses)
     @app.errorhandler(400)

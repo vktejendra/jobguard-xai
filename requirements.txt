@@ -19,6 +19,7 @@ flask-cors>=4.0
 flask-bcrypt>=1.0
 PyJWT>=2.8
 python-dotenv>=1.0
+gunicorn>=21.2
 
 # ─── Utilities ───────────────────────────────────────────────────────────────
 matplotlib>=3.7

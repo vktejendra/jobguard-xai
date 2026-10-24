@@ -11,7 +11,14 @@ import json
 import logging
 import os
 import re
+import sys
 from typing import Any, Dict, List, Optional, Tuple
+
+# ── Ensure project root is on sys.path ──
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
 
 import pandas as pd
 

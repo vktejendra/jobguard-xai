@@ -46,3 +46,8 @@ desktop.ini
 
 # Logs
 *.log
+
+# Unrelated workspaces & local scratch
+restaurant-website/
+node_modules/
+tests/scratch/
