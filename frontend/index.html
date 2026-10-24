@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="VerityFile / JobGuard-XAI: Advanced forensic detection and explainable artificial intelligence for fraudulent job postings.">
+  <title>VerityFile — Job Posting Forensics & XAI Architecture</title>
+
+  <!-- Google Fonts: Sora, Inter, IBM Plex Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Application Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Ambient Dot Grid Backdrop -->
+  <div class="bg-dot-grid" aria-hidden="true"></div>
+
+  <!-- Animated Drifting Gradient Orbs -->
+  <div class="orb-container" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- Primary Application Mounting Root -->
+  <div id="app"></div>
+
+  <!-- Global Modals Mounting Point -->
+  <div id="modal-container" class="modal-overlay" aria-hidden="true"></div>
+
+  <!-- Global Spotlight Search Overlay (Ctrl+K) -->
+  <div id="spotlight-overlay" class="spotlight-overlay" aria-hidden="true">
+    <div class="spotlight-box">
+      <div class="spotlight-header">
+        <i data-lucide="search" style="color: var(--accent-cyan); width: 20px; height: 20px;"></i>
+        <input type="text" id="spotlight-input" class="spotlight-input" placeholder="Jump to page or search 25 role profiles... (Esc to close)" autocomplete="off">
+        <span class="kbd-badge">ESC</span>
+      </div>
+      <div id="spotlight-results" class="spotlight-results"></div>
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Application Scripts -->
+  <script src="js/roleIndex.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
