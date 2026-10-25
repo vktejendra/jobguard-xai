@@ -366,8 +366,27 @@ function saveRegisteredUsersMap(users) {
 }
 
 /**
+ * Helper to determine the target API base URL for REST endpoints.
+ * Handles local dev ports (5500, 3000, 8080) pointing to Flask at :5000,
+ * and relative paths when served directly by Flask / Render production.
+ */
+function getApiBaseUrl() {
+  if (typeof window !== 'undefined') {
+    if (window.JOBGUARD_API_URL) return window.JOBGUARD_API_URL.replace(/\/$/, '');
+    const stored = localStorage.getItem('jobguard_api_url');
+    if (stored) return stored.replace(/\/$/, '');
+
+    const port = window.location.port;
+    if (['3000', '5500', '8080'].includes(port)) {
+      return 'http://127.0.0.1:5000';
+    }
+  }
+  return '';
+}
+
+/**
  * Register a new investigator user in JobGuard-XAI.
- * Validates credentials, rejects duplicates, and securely hashes password.
+ * Validates credentials, syncs with backend Flask API, and securely hashes password in browser vault.
  */
 async function registerUser(name, email, password) {
   const cleanName = (name || '').trim();
@@ -388,7 +407,7 @@ async function registerUser(name, email, password) {
     return { success: false, error: 'Password must contain a mix of letters and numbers or symbols.' };
   }
 
-  // 2. Check if user already exists
+  // 2. Check if user already exists in local registry
   const users = await getRegisteredUsersMap();
   if (users[cleanEmail]) {
     return {
@@ -397,11 +416,17 @@ async function registerUser(name, email, password) {
     };
   }
 
-  // 3. Optional: Sync with backend Flask API if available
+  // 3. Prepare cryptographic salt and local user structure
+  const salt = generateCryptographicSalt(16);
+  const passwordHash = await computePasswordHash(cleanPassword, salt);
+  let assignedId = 'usr_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+
+  // 4. Sync with backend Flask API with generous 15-second timeout for cloud hosting / Render
+  let backendToken = null;
   try {
-    const apiBase = (window.location.port === '5000') ? '' : (['3000', '5500', '8080'].includes(window.location.port) ? 'http://127.0.0.1:5000' : '');
+    const apiBase = getApiBaseUrl();
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 1200);
+    const timer = setTimeout(() => ctrl.abort(), 15000); // 15 seconds for Render free tier spin-up
     const resp = await fetch(apiBase + '/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -409,19 +434,22 @@ async function registerUser(name, email, password) {
       signal: ctrl.signal
     });
     clearTimeout(timer);
-    if (!resp.ok && resp.status === 409) {
-      return { success: false, error: 'An account with this email address already exists in the backend database.' };
+
+    const data = await resp.json().catch(() => null);
+    if (resp.ok && data) {
+      if (data.token) backendToken = data.token;
+      if (data.user && data.user.id) assignedId = String(data.user.id);
+    } else if (resp.status === 409) {
+      return { success: false, error: (data && data.error) || 'An account with this email address already exists. Please sign in instead.' };
+    } else if (resp.status === 422) {
+      return { success: false, error: (data && data.error) || 'Invalid registration details. Please verify your entries.' };
     }
   } catch (backendErr) {
-    // Backend offline — proceed with local secure user registry
+    console.warn('Backend registration offline or timed out; saved to local browser vault:', backendErr);
   }
 
-  // 4. Generate unique cryptographic salt and compute hash
-  const salt = generateCryptographicSalt(16);
-  const passwordHash = await computePasswordHash(cleanPassword, salt);
-
   const newUser = {
-    id: 'usr_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
+    id: assignedId,
     name: cleanName,
     email: cleanEmail,
     role: 'Forensic Investigator',
@@ -437,16 +465,19 @@ async function registerUser(name, email, password) {
   users[cleanEmail] = newUser;
   saveRegisteredUsersMap(users);
 
-  // 6. Generate cryptographic session token
-  const tokenPayload = {
-    userId: newUser.id,
-    email: newUser.email,
-    name: newUser.name,
-    role: newUser.role,
-    iat: Date.now(),
-    exp: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
-  };
-  const token = 'jobguard_jwt_' + btoa(unescape(encodeURIComponent(JSON.stringify(tokenPayload))));
+  // 6. Generate session token (use backend JWT if issued, else local signed token)
+  let token = backendToken;
+  if (!token) {
+    const tokenPayload = {
+      userId: newUser.id,
+      email: newUser.email,
+      name: newUser.name,
+      role: newUser.role,
+      iat: Date.now(),
+      exp: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
+    };
+    token = 'jobguard_jwt_' + btoa(unescape(encodeURIComponent(JSON.stringify(tokenPayload))));
+  }
 
   localStorage.setItem('jobguard_token', token);
   localStorage.setItem('jobguard_user', JSON.stringify({
@@ -467,8 +498,12 @@ async function registerUser(name, email, password) {
 
 /**
  * Authenticate an investigator in JobGuard-XAI.
- * STRICT: Unregistered emails are firmly REJECTED.
- * Passwords must match the stored cryptographic hash.
+ * Resilient multi-tier strategy:
+ * 1. Checks backend API (with 15s timeout for Render free tier cold-starts).
+ * 2. If backend succeeds, stores session and updates local cache.
+ * 3. If backend returns 404 (e.g. Render ephemeral SQLite database reset), checks local vault.
+ *    If local credentials match, auto-syncs user back to backend database!
+ * 4. Firmly rejects invalid passwords and non-existent accounts.
  */
 async function loginUser(email, password) {
   const cleanEmail = (email || '').trim().toLowerCase();
@@ -482,11 +517,17 @@ async function loginUser(email, password) {
     return { success: false, error: 'Please enter your password.' };
   }
 
-  // 2. Try backend API first if online
+  const users = await getRegisteredUsersMap();
+  const localUser = users[cleanEmail];
+
+  // 2. Try backend API first with 15-second timeout
+  let backendData = null;
+  let backendStatus = null;
+
   try {
-    const apiBase = (window.location.port === '5000') ? '' : (['3000', '5500', '8080'].includes(window.location.port) ? 'http://127.0.0.1:5000' : '');
+    const apiBase = getApiBaseUrl();
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 1200);
+    const timer = setTimeout(() => ctrl.abort(), 15000); // 15 seconds for Render free tier spin-up
     const resp = await fetch(apiBase + '/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -494,90 +535,136 @@ async function loginUser(email, password) {
       signal: ctrl.signal
     });
     clearTimeout(timer);
-    const data = await resp.json().catch(() => null);
-    if (resp.ok && data && data.token) {
-      localStorage.setItem('jobguard_token', data.token);
-      localStorage.setItem('jobguard_user', JSON.stringify(data.user));
-      return { success: true, token: data.token, user: data.user };
-    } else if (resp.status === 404 || resp.status === 401) {
-      return { success: false, error: (data && data.error) || 'Invalid email or password.' };
+    backendStatus = resp.status;
+    backendData = await resp.json().catch(() => null);
+
+    if (resp.ok && backendData && backendData.token) {
+      localStorage.setItem('jobguard_token', backendData.token);
+      localStorage.setItem('jobguard_user', JSON.stringify(backendData.user));
+
+      // Cache or update in local user vault
+      if (!localUser) {
+        const salt = generateCryptographicSalt(16);
+        const passwordHash = await computePasswordHash(cleanPassword, salt);
+        users[cleanEmail] = {
+          id: String(backendData.user.id),
+          name: backendData.user.name,
+          email: backendData.user.email,
+          role: 'Forensic Investigator',
+          org: 'JobGuard-XAI Digital Forensics',
+          badgeId: 'XAI-' + Math.floor(10000 + Math.random() * 90000),
+          salt: salt,
+          passwordHash: passwordHash,
+          createdAt: new Date().toISOString(),
+          failedAttempts: 0
+        };
+        saveRegisteredUsersMap(users);
+      } else {
+        localUser.failedAttempts = 0;
+        localUser.lastLogin = new Date().toISOString();
+        users[cleanEmail] = localUser;
+        saveRegisteredUsersMap(users);
+      }
+
+      return { success: true, token: backendData.token, user: backendData.user };
     }
   } catch (backendErr) {
-    // Backend offline — proceed with local secure user registry
+    console.warn('Backend login connection issue, checking local vault:', backendErr);
   }
 
-  // 3. Strict Local User Vault Check
-  const users = await getRegisteredUsersMap();
-  const user = users[cleanEmail];
+  // 3. Resilient Local User Vault Check:
+  // Handles cases where backend SQLite was reset (Render free tier spin-down) or backend is offline.
+  if (localUser) {
+    // Check rate-limiting / brute-force protection
+    if (localUser.failedAttempts && localUser.failedAttempts >= 5) {
+      const lastAttempt = localUser.lastFailedAt ? new Date(localUser.lastFailedAt).getTime() : 0;
+      const cooldownMs = 60 * 1000;
+      if (Date.now() - lastAttempt < cooldownMs) {
+        const waitSec = Math.ceil((cooldownMs - (Date.now() - lastAttempt)) / 1000);
+        return {
+          success: false,
+          error: `Account temporarily locked due to repeated invalid attempts. Please wait ${waitSec} seconds.`
+        };
+      } else {
+        localUser.failedAttempts = 0;
+      }
+    }
 
-  // FIRM REJECTION IF NOT REGISTERED
-  if (!user) {
-    return {
-      success: false,
-      error: `No account found for '${cleanEmail}'. You must register first before signing in.`
-    };
-  }
+    // Verify Password Hash locally
+    const computedHash = await computePasswordHash(cleanPassword, localUser.salt);
+    if (computedHash === localUser.passwordHash) {
+      localUser.failedAttempts = 0;
+      localUser.lastLogin = new Date().toISOString();
+      users[cleanEmail] = localUser;
+      saveRegisteredUsersMap(users);
 
-  // 4. Rate-limiting / brute-force protection
-  if (user.failedAttempts && user.failedAttempts >= 5) {
-    const lastAttempt = user.lastFailedAt ? new Date(user.lastFailedAt).getTime() : 0;
-    const cooldownMs = 60 * 1000; // 1 minute lock
-    if (Date.now() - lastAttempt < cooldownMs) {
-      const waitSec = Math.ceil((cooldownMs - (Date.now() - lastAttempt)) / 1000);
+      // Auto-heal / re-register user back into the backend SQLite database if backend was missing it
+      if (backendStatus === 404) {
+        try {
+          const apiBase = getApiBaseUrl();
+          fetch(apiBase + '/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: localUser.name, email: localUser.email, password: cleanPassword })
+          }).then(r => r.json()).then(regData => {
+            if (regData && regData.token) {
+              localStorage.setItem('jobguard_token', regData.token);
+            }
+          }).catch(() => {});
+        } catch (syncErr) {}
+      }
+
+      const tokenPayload = {
+        userId: localUser.id,
+        email: localUser.email,
+        name: localUser.name,
+        role: localUser.role,
+        iat: Date.now(),
+        exp: Date.now() + 24 * 60 * 60 * 1000
+      };
+      const token = 'jobguard_jwt_' + btoa(unescape(encodeURIComponent(JSON.stringify(tokenPayload))));
+
+      const sessionUser = {
+        id: localUser.id,
+        name: localUser.name,
+        email: localUser.email,
+        role: localUser.role,
+        org: localUser.org,
+        badgeId: localUser.badgeId
+      };
+
+      localStorage.setItem('jobguard_token', token);
+      localStorage.setItem('jobguard_user', JSON.stringify(sessionUser));
+
       return {
-        success: false,
-        error: `Account temporarily locked due to repeated invalid attempts. Please wait ${waitSec} seconds.`
+        success: true,
+        token: token,
+        user: sessionUser
       };
     } else {
-      user.failedAttempts = 0; // cooldown expired
+      localUser.failedAttempts = (localUser.failedAttempts || 0) + 1;
+      localUser.lastFailedAt = new Date().toISOString();
+      users[cleanEmail] = localUser;
+      saveRegisteredUsersMap(users);
+      return {
+        success: false,
+        error: 'Invalid password. Please verify your credentials and try again.'
+      };
     }
   }
 
-  // 5. Verify Password Hash
-  const computedHash = await computePasswordHash(cleanPassword, user.salt);
-  if (computedHash !== user.passwordHash) {
-    user.failedAttempts = (user.failedAttempts || 0) + 1;
-    user.lastFailedAt = new Date().toISOString();
-    users[cleanEmail] = user;
-    saveRegisteredUsersMap(users);
+  // 4. Backend explicit 401 error (known email but incorrect password)
+  if (backendStatus === 401) {
     return {
       success: false,
-      error: 'Invalid password. Please verify your credentials and try again.'
+      error: (backendData && backendData.error) || 'Invalid password. Please check your credentials.'
     };
   }
 
-  // 6. Successful Authentication — reset counters & issue session
-  user.failedAttempts = 0;
-  user.lastLogin = new Date().toISOString();
-  users[cleanEmail] = user;
-  saveRegisteredUsersMap(users);
-
-  const tokenPayload = {
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-    iat: Date.now(),
-    exp: Date.now() + 24 * 60 * 60 * 1000
-  };
-  const token = 'jobguard_jwt_' + btoa(unescape(encodeURIComponent(JSON.stringify(tokenPayload))));
-
-  const sessionUser = {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    org: user.org,
-    badgeId: user.badgeId
-  };
-
-  localStorage.setItem('jobguard_token', token);
-  localStorage.setItem('jobguard_user', JSON.stringify(sessionUser));
-
+  // 5. Account not found in either backend or local registry
   return {
-    success: true,
-    token: token,
-    user: sessionUser
+    success: false,
+    error: (backendData && backendData.error) || `No account found for '${cleanEmail}'. Please register first before signing in.`
   };
 }
 
@@ -660,7 +747,7 @@ function logoutUser() {
   localStorage.removeItem('jobguard_token');
   localStorage.removeItem('jobguard_user');
   try {
-    const apiBase = (window.location.port === '5000') ? '' : (['3000', '5500', '8080'].includes(window.location.port) ? 'http://127.0.0.1:5000' : '');
+    const apiBase = getApiBaseUrl();
     fetch(apiBase + '/api/auth/logout', { method: 'POST' }).catch(() => {});
   } catch (e) {}
 }

@@ -6646,8 +6646,15 @@ ${escapeHtml(plainLang)}
       btn.disabled = true;
       btn.innerHTML = `<span class="spinner"></span> Authenticating Clearance...`;
 
+      const wakeTimer = setTimeout(() => {
+        if (btn && btn.disabled) {
+          btn.innerHTML = `<span class="spinner"></span> Connecting to Cloud Server (waking Render instance)...`;
+        }
+      }, 2500);
+
       try {
         const res = await window.JobGuardData.loginUser(email, pwd);
+        clearTimeout(wakeTimer);
         if (!res || !res.success) {
           throw new Error((res && res.error) || 'Invalid email or password.');
         }
@@ -6655,6 +6662,7 @@ ${escapeHtml(plainLang)}
         showToast('Investigator session verified. Welcome back, ' + (res.user.name || '') + '.', 'success');
         window.location.hash = '#dashboard';
       } catch (err) {
+        clearTimeout(wakeTimer);
         btn.classList.remove('is-loading');
         btn.disabled = false;
         btn.innerHTML = `<i data-lucide="log-in" style="width:16px;height:16px;"></i> Sign In to Forensic Console`;
@@ -6881,8 +6889,15 @@ ${escapeHtml(plainLang)}
       btn.disabled = true;
       btn.innerHTML = `<span class="spinner"></span> Generating Cryptographic Clearance...`;
 
+      const wakeTimer = setTimeout(() => {
+        if (btn && btn.disabled) {
+          btn.innerHTML = `<span class="spinner"></span> Connecting to Cloud Server (waking Render instance)...`;
+        }
+      }, 2500);
+
       try {
         const res = await window.JobGuardData.registerUser(name, email, pwd);
+        clearTimeout(wakeTimer);
         if (!res || !res.success) {
           throw new Error((res && res.error) || 'Registration could not be completed.');
         }
@@ -6890,6 +6905,7 @@ ${escapeHtml(plainLang)}
         showToast('Registration successful! Welcome to JobGuard-XAI, ' + name + '.', 'success');
         window.location.hash = '#dashboard';
       } catch (err) {
+        clearTimeout(wakeTimer);
         btn.classList.remove('is-loading');
         btn.disabled = false;
         btn.innerHTML = `<i data-lucide="shield-check" style="width:16px;height:16px;"></i> Initialize Investigator Account`;

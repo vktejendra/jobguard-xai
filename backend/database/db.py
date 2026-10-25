@@ -95,6 +95,26 @@ def init_db(app=None) -> None:
         conn.execute("PRAGMA foreign_keys = ON;")
         conn.executescript(schema_sql)
         conn.commit()
+
+        # Seed default authorized demo accounts if not already present
+        cursor = conn.cursor()
+        for demo_name, demo_email in [
+            ("Lead Forensic Investigator", "analyst@jobguard.ai"),
+            ("VK Tej", "vktej@jobguard.ai")
+        ]:
+            cursor.execute("SELECT id FROM users WHERE email = ?", (demo_email,))
+            if not cursor.fetchone():
+                try:
+                    from backend.extensions import bcrypt
+                    demo_hash = bcrypt.generate_password_hash("JobGuard@2026").decode("utf-8")
+                except Exception:
+                    import bcrypt as py_bcrypt
+                    demo_hash = py_bcrypt.hashpw(b"JobGuard@2026", py_bcrypt.gensalt()).decode("utf-8")
+                cursor.execute(
+                    "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+                    (demo_name, demo_email, demo_hash)
+                )
+        conn.commit()
     finally:
         conn.close()
 
